@@ -1,5 +1,6 @@
 #include "Chip8.h"
 #include "Chip8_fontset.h"
+#include "framework.h"
 
 #include <string>
 #include <fstream>
@@ -66,15 +67,19 @@ void Chip8::emulateCycle() {
 
     switch (opcode & 0xF000) {
         case 0x0000:
-            switch (opcode & 0x000F) {
-                case 0x0000: // 0x00E0: Clear screen
-                    clearDisplay();
-                    pc += 2;
-                    break;
-                case 0x000E: // 0x00EE: Return from subroutine
-                    pc = stack[--sp];
-                    break;
-            }
+			switch (opcode & 0x000F) {
+			case 0x0000: // 0x00E0: Clear screen
+				clearDisplay();
+				pc += 2;
+				break;
+			case 0x000E: // 0x00EE: Return from subroutine
+				pc = stack[--sp];
+				break;
+			default:
+				handleUnknownCode();
+				break;
+			}
+		break;
         case 0x1000: // 0x1NNN: Jump to address NNN.
             pc = opcode & 0x0FFF;
             break;
@@ -170,7 +175,11 @@ void Chip8::emulateCycle() {
                     V[(opcode & 0x0F00) >> 8] <<= 1;
                     pc += 2;
                     break;
+				default:
+					handleUnknownCode();
+					break;
             }
+            break;
         case 0x9000: // 0x9XY0: Skip next instruction if V[X] != V[Y]
             if (V[(opcode & 0x0F00) >> 8] != V[(opcode & 0x00F0) >> 4]) {
                 pc += 4;
@@ -232,7 +241,11 @@ void Chip8::emulateCycle() {
                     }
                     break;
                 }
+				default:
+					handleUnknownCode();
+					break;
             }
+            break;
         case 0xF000:
             switch (opcode & 0x00FF) {
 				case 0x0007: // 0xFX07: Set V[x] to value of delay_timer
@@ -277,18 +290,32 @@ void Chip8::emulateCycle() {
                     pc += 2;
                     break;
                 }
-                case 0x0065: // 0xFX65: Fill register V0 to VX (inclusive) from memory starting at address I
+                case 0x0065: { // 0xFX65: Fill register V0 to VX (inclusive) from memory starting at address I
                     unsigned char X = (opcode & 0x0F00) >> 8;
                     for (int i = 0; i < X; ++i) {
                         V[i] = memory[I + i * sizeof(unsigned char)];
                     }
                     pc += 2;
                     break;
+                }
+				default:
+					handleUnknownCode();
+					break;
             }
+            break;
         default:
-            std::cout << "ERROR: Unknown opcode: " << opcode << std::endl;
+            handleUnknownCode();
             break;
     }
+}
+
+void Chip8::handleUnknownCode() {
+	std::string err_str;
+	err_str += "Unknown opcode: ";
+	err_str += std::to_string(opcode);
+	err_str += "\n";
+
+	throw std::runtime_error(err_str);
 }
 
 void Chip8::clearDisplay() {
