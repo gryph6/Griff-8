@@ -51,7 +51,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     Chip8 chip8;
 
     chip8.initialize();
-    // chip8.loadProgram("Path");
+    chip8.loadProgram("C:\\Users\\griff\\Downloads\\15 Puzzle [Roger Ivie].ch8");
     
     // Main message loop:
     while (GetMessage(&msg, nullptr, 0, 0))
@@ -62,7 +62,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
 
-        // chip8.emulateCycle();
+        chip8.emulateCycle();
+
         // if (chip8.drawFlag) drawGraphics();
         // chip8.setKeys();
     }

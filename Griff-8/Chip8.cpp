@@ -63,12 +63,22 @@ void Chip8::emulateCycle() {
     opcode = memory[pc] << 8 | memory[pc + 1];
 
     switch (opcode & 0xF000) {
+        case 0x0000:
+            switch (opcode & 0x000F) {
+                case 0x0000: // 0x00E0: Clear screen
+                    clearDisplay();
+                    pc += 2;
+                    break;
+                case 0x000E: // 0x00EE: Return from subroutine
+                    pc = stack[--sp];
+                    break;
+            }
         case 0x1000: // 0x1NNN: Jump to address NNN.
             sp = opcode & 0x0FFF;
             break;
         case 0x2000: // 0x2NNN: Call subroutine at address NNN. Store current stack pointer in stack, move stack pointer to address NNN.
-            stack[sp++] = sp;
-            sp = opcode & 0x0FFF;
+            stack[sp++] = pc;
+            pc = opcode & 0x0FFF;
             break;
         case 0x3000: // 0x3XNN: Skip next instruction if VX == NN
             X = (opcode & 0x0F00) >> 8;
@@ -100,20 +110,72 @@ void Chip8::emulateCycle() {
             V[X] = opcode & 0x00FF;
             pc += 2;
             break;
+        case 0x7000: // 0x7XNN: Adds NN to V[X] (carry flag unaffected).
+            V[(opcode & 0x0F00) >> 8] += opcode & 0x00FF;
+            pc += 2;
+            break;
+        case 0x8000:
+            switch (opcode & 0x000F) {
+				case 0x0000: // 0x8XY0: Set V[x] = V[y]
+                    V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x00F0) >> 4];
+                    pc += 2;
+                    break;
+                case 0x0001: // 0x8XY1: Set V[x] = V[x] | V[y]
+                    V[(opcode & 0x0F00) >> 8] |= V[(opcode & 0x00F0) >> 4];
+                    pc += 2;
+                    break;
+                case 0x0002: // 0x8XY2: Set V[x] = V[x] & V[y]
+                    V[(opcode & 0x0F00) >> 8] &= V[(opcode & 0x00F0) >> 4];
+                    pc += 2;
+                    break;
+                case 0x0003: // 0x8XY3: Set V[x] = V[x] ^ V[y]
+                    V[(opcode & 0x0F00) >> 8] ^= V[(opcode & 0x00F0) >> 4];
+                    pc += 2;
+			    case 0x0004: // 0x8XY4: Set V[x] = V[x] + V[y]. V[0xF] is set if there's overflow, cleared if not.
+                    if (V[(opcode & 0x00F0) >> 4] > (0xFF - V[(opcode & 0x0F00) >> 8])) {
+                        V[0xF] = 1;
+                    } else {
+                        V[0xF] = 0;
+                    }
+					V[(opcode & 0x0F00) >> 8] += V[(opcode & 0x00F0) >> 4];
+					pc += 2;
+					break;
+                case 0x0005: // 0x8XY5: Set V[x] = V[x] - V[y]. V[0xF] is clear when there's a borrow, set if not.
+                    if (V[(opcode & 0x0F00) >> 8] < V[(opcode & 0x00F0) >> 4]) {
+                        V[0xF] = 0;
+                    } else {
+                        V[0xF] = 1;
+                    }
+                    V[(opcode & 0x0F00) >> 8] -= V[(opcode & 0x00F0) >> 4];
+                    pc += 2;
+                    break;
+                case 0x0006: // 0x8XY6: Store LSB of V[X] in V[0xF] and shift V[X] to right by 1
+                    V[0xF] = V[(opcode & 0x0F00) >> 8] & 0x0001;
+                    V[(opcode & 0x0F00) >> 8] >>= 1;
+                    pc += 2;
+                    break;
+                case 0x0007: // 0x8XY7: Set V[x] = V[y] - V[x]. V[0xF] is clear when there's a borrow, set if not.
+                    if (V[(opcode & 0x00F0) >> 4] < V[(opcode & 0x0F00) >> 8]) {
+                        V[0xF] = 0;
+                    } else {
+                        V[0xF] = 1;
+                    }
+                    V[(opcode & 0x00F0) >> 4] -= V[(opcode & 0x0F00) >> 8];
+                    pc += 2;
+                    break;
+                case 0x000E: // 0x8XY6: Store MSB of V[X] in V[0xF] and shift V[X] to left by 1
+                    V[0xF] = V[(opcode & 0x0F00) >> 8] & 0x8000;
+                    V[(opcode & 0x0F00) >> 8] <<= 1;
+                    pc += 2;
+                    break;
+            }
         case 0xA000: // 0xANNN: Sets I to address NNN
             I = opcode & 0x0FFF;
             pc += 2;
             break;
-        case 0x0000:
-            switch (opcode & 0x000F) {
-                case 0x0000: // 0x00E0: Clear screen
-                    clearDisplay();
-                    pc += 2;
-                    break;
-                case 0x000E: // 0x00EE: Return from subroutine
-                    sp = stack[--sp];
-                    break;
-            }
+        case 0xB000: // 0xBNNN: Jumps to address NNN plus V[0]
+            pc = (opcode & 0x0FFF) + V[0];
+            break;
         default:
             std::cout << "ERROR: Unknown opcode: " << opcode << std::endl;
             break;

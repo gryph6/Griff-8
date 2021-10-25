@@ -27,6 +27,6 @@ private:
 
 	unsigned char key[16];
 
-	char X;
-	char Y;
+	unsigned char X;
+	unsigned char Y;
 };
