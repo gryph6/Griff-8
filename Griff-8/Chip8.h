@@ -5,10 +5,10 @@ public:
 	void initialize();
 	bool loadProgram(std::string path);
 	void emulateCycle();
+	void updateTimers();
 
 private:
 	void clearDisplay();
-	void updateTimers();
 
 	unsigned short opcode;
 	unsigned short memory[4096];
@@ -29,4 +29,6 @@ private:
 
 	unsigned char X;
 	unsigned char Y;
+
+	bool _draw = false;
 };

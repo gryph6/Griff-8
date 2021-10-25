@@ -63,6 +63,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
 
         chip8.emulateCycle();
+        chip8.updateTimers();
 
         // if (chip8.drawFlag) drawGraphics();
         // chip8.setKeys();

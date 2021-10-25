@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <cstdlib>
 
 void Chip8::initialize() {
     pc = 0x200;
@@ -61,6 +62,7 @@ bool Chip8::loadProgram(std::string path) {
 
 void Chip8::emulateCycle() {
     opcode = memory[pc] << 8 | memory[pc + 1];
+    _draw = false;
 
     switch (opcode & 0xF000) {
         case 0x0000:
@@ -74,7 +76,7 @@ void Chip8::emulateCycle() {
                     break;
             }
         case 0x1000: // 0x1NNN: Jump to address NNN.
-            sp = opcode & 0x0FFF;
+            pc = opcode & 0x0FFF;
             break;
         case 0x2000: // 0x2NNN: Call subroutine at address NNN. Store current stack pointer in stack, move stack pointer to address NNN.
             stack[sp++] = pc;
@@ -98,7 +100,7 @@ void Chip8::emulateCycle() {
             break;
         case 0x5000: // 0x5XY0: Skip next instruction if VX == VY
             X = (opcode & 0x0F00) >> 8;
-            Y = (opcode & 0x00F0) >> 8;
+            Y = (opcode & 0x00F0) >> 4;
             if (V[X] == V[Y]) {
                 pc += 4;
             } else {
@@ -169,6 +171,13 @@ void Chip8::emulateCycle() {
                     pc += 2;
                     break;
             }
+        case 0x9000: // 0x9XY0: Skip next instruction if V[X] != V[Y]
+            if (V[(opcode & 0x0F00) >> 8] != V[(opcode & 0x00F0) >> 4]) {
+                pc += 4;
+            } else {
+                pc += 2;
+            }
+            break;
         case 0xA000: // 0xANNN: Sets I to address NNN
             I = opcode & 0x0FFF;
             pc += 2;
@@ -176,6 +185,54 @@ void Chip8::emulateCycle() {
         case 0xB000: // 0xBNNN: Jumps to address NNN plus V[0]
             pc = (opcode & 0x0FFF) + V[0];
             break;
+        case 0xC000: // 0xCXNN: Set V[X] equal to rand([0, 255]) & NN
+            V[(opcode & 0x0F00) >> 8] = ((unsigned char) (std::rand() * 255)) & (opcode & 0x00FF);
+            pc += 2;
+            break;
+        case 0xD000: { // Draw function.
+            unsigned short x = V[(opcode & 0x0F00) >> 8];
+            unsigned short y = V[(opcode & 0x00F0) >> 4];
+            unsigned short height = opcode & 0x000F;
+            unsigned short pixel;
+
+            V[0xF] = 0;
+            for (int yline = 0; yline < height; yline++) {
+                pixel = memory[I + yline];
+                for (int xline = 0; xline < 8; xline++) {
+                    if ((pixel & (0x80 >> xline)) != 0) {
+                        if (gfx[(x + xline + ((y + yline) * 64))] == 1) {
+                            V[0xF] = 1;
+                        }
+                        gfx[x + xline + ((y + yline) * 64)] ^= 1;
+                    }
+                }
+            }
+
+            _draw = true;
+            pc += 2;
+            break;
+        }
+        case 0xE000:
+            switch (opcode & 0x000F) {
+				case 0x000E: { // 0xEX9E: skip if key[V[X]] is pressed
+                    unsigned char x = V[(opcode & 0x0F00) >> 8];
+                    if (key[x]) {
+                        pc += 4;
+                    } else {
+						pc += 2;
+                    }
+					break;
+                }
+                case 0x0001: { // 0x0ExA1: skip if key[V[X]] is not pressed
+                    unsigned char x = V[(opcode & 0x0F00) >> 8];
+                    if (!key[x]) {
+                        pc += 4;
+                    } else {
+						pc += 2;
+                    }
+                    break;
+                }
+            }
         default:
             std::cout << "ERROR: Unknown opcode: " << opcode << std::endl;
             break;
