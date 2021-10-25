@@ -233,6 +233,58 @@ void Chip8::emulateCycle() {
                     break;
                 }
             }
+        case 0xF000:
+            switch (opcode & 0x00FF) {
+				case 0x0007: // 0xFX07: Set V[x] to value of delay_timer
+                    V[(opcode & 0x0F00) >> 8] = delay_timer;
+                    pc += 2;
+                    break;
+                case 0x000A: // 0xFX0A: Wait for any key press
+                    for (int i = 0; i < 16; ++i) {
+                        if (key[i]) {
+                            pc += 2;
+                            break;
+                        }
+                    }
+                    break;
+                case 0x0015: // 0xFX15: Set delay_timer to value of V[x]
+                    delay_timer = V[(opcode & 0x0F00) >> 8];
+                    pc += 2;
+                    break;
+                case 0x0018: // 0xFX18: Set sound_timer to value of V[x]
+                    sound_timer = V[(opcode & 0x0F00) >> 8];
+                    pc += 2;
+                    break;
+                case 0x001E: // 0xFX1E: Add V[X] to I, VF not affected.
+                    I += V[(opcode & 0x0F00) >> 8];
+                    pc += 2;
+                    break;
+                case 0x0029: // 0xFX29: Set I to address of character sprite in fontset
+                    I = memory[V[(opcode & 0x0F00) >> 8]];
+					pc += 2;
+                    break;
+                case 0x0033: // 0xFX33: Store binary-coded decimal representation of V[X] with most significant 3 digits in memory starting at I
+                    memory[I] = V[(opcode & 0x0F00) >> 8] / 100;
+                    memory[I + 1] = (V[(opcode & 0x0F00) >> 8] / 10) % 10;
+                    memory[I + 2] = (V[(opcode & 0x0F00) >> 8] % 100) % 10;
+                    pc += 2;
+                    break;
+                case 0x0055: { // 0xFX55: Dump register V0 to VX (inclusive) in memory starting at address I
+                    unsigned char X = (opcode & 0x0F00) >> 8;
+                    for (int i = 0; i < X; ++i) {
+                        memory[I + i * sizeof(char)] = V[i];
+                    }
+                    pc += 2;
+                    break;
+                }
+                case 0x0065: // 0xFX65: Fill register V0 to VX (inclusive) from memory starting at address I
+                    unsigned char X = (opcode & 0x0F00) >> 8;
+                    for (int i = 0; i < X; ++i) {
+                        V[i] = memory[I + i * sizeof(unsigned char)];
+                    }
+                    pc += 2;
+                    break;
+            }
         default:
             std::cout << "ERROR: Unknown opcode: " << opcode << std::endl;
             break;
