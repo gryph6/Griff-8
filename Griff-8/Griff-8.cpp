@@ -94,7 +94,7 @@ void Draw(unsigned char* graphics) {
     m_pRenderTarget->BeginDraw();
 
     m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-    m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
+    m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::DarkRed));
 
     D2D1_SIZE_F rtSize = m_pRenderTarget->GetSize();
 
@@ -102,21 +102,19 @@ void Draw(unsigned char* graphics) {
 	float pixel_height = rtSize.height / 32.0f;
 
     for (int i = 0; i < 64 * 32; ++i) {
-        int row = i % 64;
-        int col = i / 64;
-
-		D2D1_RECT_F pixel = D2D1::RectF(
-			row * pixel_width,
-			col * pixel_height,
-			row * pixel_width + pixel_width,
-			col * pixel_height + pixel_height 
-		);
-
         if (graphics[i]) {
+			int row = i % 64;
+			int col = i / 64;
+
+			D2D1_RECT_F pixel = D2D1::RectF(
+				row * pixel_width,
+				col * pixel_height,
+				row * pixel_width + pixel_width,
+				col * pixel_height + pixel_height 
+			);
+
             m_pRenderTarget->FillRectangle(&pixel, m_pForegroundBrush);
-        } else {
-            m_pRenderTarget->FillRectangle(&pixel, m_pBackgroundBrush);
-        }
+        } 
     }
 
     m_pRenderTarget->EndDraw();

@@ -70,6 +70,7 @@ void Chip8::emulateCycle() {
 			switch (opcode & 0x000F) {
 			case 0x0000: // 0x00E0: Clear screen
 				clearDisplay();
+                _draw = true;
 				pc += 2;
 				break;
 			case 0x000E: // 0x00EE: Return from subroutine
@@ -202,17 +203,20 @@ void Chip8::emulateCycle() {
             unsigned short x = V[(opcode & 0x0F00) >> 8];
             unsigned short y = V[(opcode & 0x00F0) >> 4];
             unsigned short height = opcode & 0x000F;
-            unsigned short pixel;
+            unsigned short sprite;
 
             V[0xF] = 0;
-            for (int yline = 0; yline < height; yline++) {
-                pixel = memory[I + yline];
-                for (int xline = 0; xline < 8; xline++) {
-                    if ((pixel & (0x80 >> xline)) != 0) {
-                        if (gfx[(x + xline + ((y + yline) * 64))] == 1) {
+            for (int row = 0; row < height; ++row) {
+                sprite = memory[I + row];
+                for (int col = 0; col < 8; ++col) {
+                    uint8_t spritePixel = sprite & (0x80 >> col);
+                    unsigned char* screenPixel = &gfx[(y + row) * 64 + x + col];
+                    
+                    if (spritePixel) {
+                        if (*screenPixel == 0xFFFFFFFF) {
                             V[0xF] = 1;
                         }
-                        gfx[x + xline + ((y + yline) * 64)] ^= 1;
+                        *screenPixel ^= 0xFFFFFFFF;
                     }
                 }
             }
