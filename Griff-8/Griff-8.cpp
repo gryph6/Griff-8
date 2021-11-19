@@ -7,6 +7,48 @@
 
 #include <iostream>
 
+// Windows Header Files:
+#include <windows.h>
+
+// C RunTime Header Files:
+#include <stdlib.h>
+#include <malloc.h>
+#include <memory.h>
+#include <wchar.h>
+#include <math.h>
+
+#include <d2d1.h>
+#include <d2d1helper.h>
+#include <dwrite.h>
+#include <wincodec.h>
+
+template<class Interface>
+inline void SafeRelease(
+    Interface** ppInterfaceToRelease
+)
+{
+    if (*ppInterfaceToRelease != NULL)
+    {
+        (*ppInterfaceToRelease)->Release();
+
+        (*ppInterfaceToRelease) = NULL;
+    }
+}
+
+
+#ifndef Assert
+#if defined( DEBUG ) || defined( _DEBUG )
+#define Assert(b) do {if (!(b)) {OutputDebugStringA("Assert: " #b "\n");}} while(0)
+#else
+#define Assert(b)
+#endif //DEBUG || _DEBUG
+#endif
+
+#ifndef HINST_THISCOMPONENT
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+#define HINST_THISCOMPONENT ((HINSTANCE)&__ImageBase)
+#endif
+
 #define MAX_LOADSTRING 100
 
 // Global Variables:
@@ -19,6 +61,66 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+Chip8 chip8;
+
+HWND m_hwnd;
+ID2D1Factory* m_pDirect2dFactory;
+ID2D1HwndRenderTarget* m_pRenderTarget;
+ID2D1SolidColorBrush* m_pBlackBrush;
+ID2D1SolidColorBrush* m_pWhiteBrush;
+
+void CheckerboardDemo(D2D1_RECT_F rect, int row, int col) {
+	// Draw checkerboard
+	if (row % 2 == 0) {
+		if (col % 2 == 0) {
+			m_pRenderTarget->FillRectangle(&rect, m_pBlackBrush);
+		}
+		else {
+			m_pRenderTarget->FillRectangle(&rect, m_pWhiteBrush);
+		}
+	}
+	else {
+		if (col % 2 == 0) {
+			m_pRenderTarget->FillRectangle(&rect, m_pWhiteBrush);
+		}
+		else {
+			m_pRenderTarget->FillRectangle(&rect, m_pBlackBrush);
+		}
+	}
+}
+
+void Draw(unsigned char* graphics) {
+    m_pRenderTarget->BeginDraw();
+
+    m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+    m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+
+    D2D1_SIZE_F rtSize = m_pRenderTarget->GetSize();
+
+	float pixel_width = rtSize.width / 64.0f;
+	float pixel_height = rtSize.height / 32.0f;
+
+    for (int i = 0; i < 64 * 32; ++i) {
+        int row = i % 64;
+        int col = i / 64;
+
+		D2D1_RECT_F pixel = D2D1::RectF(
+			row * pixel_width,
+			col * pixel_height,
+			row * pixel_width + pixel_width,
+			col * pixel_height + pixel_height 
+		);
+
+        if (graphics[i]) {
+            m_pRenderTarget->FillRectangle(&pixel, m_pWhiteBrush);
+        } else {
+            m_pRenderTarget->FillRectangle(&pixel, m_pBlackBrush);
+        }
+    }
+
+    m_pRenderTarget->EndDraw();
+}
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -43,31 +145,58 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_GRIFF8));
 
-    MSG msg;
-
     // Setup Graphics
-    // Setup Input
+    if (FAILED(CoInitialize(nullptr))) {
+        return -1;
+    }
 
-    Chip8 chip8;
+	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_pDirect2dFactory);
+    RECT rc;
+    GetClientRect(m_hwnd, &rc);
+
+    D2D1_SIZE_U size = D2D1::SizeU(
+        rc.right - rc.left,
+        rc.bottom - rc.top
+    );
+
+    hr = m_pDirect2dFactory->CreateHwndRenderTarget(
+        D2D1::RenderTargetProperties(),
+        D2D1::HwndRenderTargetProperties(m_hwnd, size),
+        &m_pRenderTarget
+    );
+
+    hr = m_pRenderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(D2D1::ColorF::Black),
+        &m_pBlackBrush
+    );
+
+    hr = m_pRenderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(D2D1::ColorF::White),
+        &m_pWhiteBrush
+    );
 
     chip8.initialize();
     chip8.loadProgram("C:\\Users\\griff\\Downloads\\15 Puzzle [Roger Ivie].ch8");
     
-    // Main message loop:
-    while (GetMessage(&msg, nullptr, 0, 0))
-    {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
+	MSG msg;
+    bool running = true;
+    while (running) {
+		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+        
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
 
-        chip8.emulateCycle();
-        chip8.updateTimers();
+			chip8.emulateCycle();
 
-        // if (chip8.drawFlag) drawGraphics();
-        // chip8.setKeys();
+            if (chip8.shouldDraw()) {
+                Draw(chip8.getGraphics());
+            }
+
+			chip8.updateTimers();
+		}
     }
+
+    CoUninitialize();
 
     return (int) msg.wParam;
 }
@@ -91,7 +220,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_GRIFF8));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_GRIFF8);
+    wcex.lpszMenuName   = nullptr;
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -112,16 +241,26 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+   m_hwnd = CreateWindowW(
+       szWindowClass, 
+       szTitle, 
+       (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX ),
+       CW_USEDEFAULT, 
+       0, 
+       1280, 
+       640, 
+       nullptr, 
+       nullptr, 
+       hInstance, 
+       nullptr);
 
-   if (!hWnd)
+   if (!m_hwnd)
    {
       return FALSE;
    }
 
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
+   ShowWindow(m_hwnd, nCmdShow);
+   UpdateWindow(m_hwnd);
 
    return TRUE;
 }
@@ -146,9 +285,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // Parse the menu selections:
             switch (wmId)
             {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
             case IDM_EXIT:
                 DestroyWindow(hWnd);
                 break;
@@ -157,14 +293,87 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-            EndPaint(hWnd, &ps);
+    case WM_KEYDOWN: {
+        switch (wParam) {
+        case 0x5A:
+            chip8.setKey(0);
+        case 0x58:
+            chip8.setKey(1);
+        case 0x43:
+            chip8.setKey(2);
+        case 0x56:
+            chip8.setKey(3);
+        case 0x41:
+            chip8.setKey(4);
+        case 0x53:
+            chip8.setKey(5);
+        case 0x44:
+            chip8.setKey(6);
+        case 0x46:
+            chip8.setKey(7);
+        case 0x51:
+            chip8.setKey(8);
+        case 0x57:
+            chip8.setKey(9);
+        case 0x45:
+            chip8.setKey(10);
+        case 0x52:
+            chip8.setKey(11);
+        case 0x31:
+			chip8.setKey(12);
+            break;
+        case 0x32:
+			chip8.setKey(13);
+            break;
+        case 0x33:
+			chip8.setKey(14);
+            break;
+        case 0x34:
+			chip8.setKey(15);
+            break;
+        }
+    }
+    case WM_KEYUP: {
+        switch (wParam) {
+        case 0x5A:
+            chip8.unsetKey(0);
+        case 0x58:
+            chip8.unsetKey(1);
+        case 0x43:
+            chip8.unsetKey(2);
+        case 0x56:
+            chip8.unsetKey(3);
+        case 0x41:
+            chip8.unsetKey(4);
+        case 0x53:
+            chip8.unsetKey(5);
+        case 0x44:
+            chip8.unsetKey(6);
+        case 0x46:
+            chip8.unsetKey(7);
+        case 0x51:
+            chip8.unsetKey(8);
+        case 0x57:
+            chip8.unsetKey(9);
+        case 0x45:
+            chip8.unsetKey(10);
+        case 0x52:
+            chip8.unsetKey(11);
+        case 0x31:
+			chip8.unsetKey(12);
+            break;
+        case 0x32:
+			chip8.unsetKey(13);
+            break;
+        case 0x33:
+			chip8.unsetKey(14);
+            break;
+        case 0x34:
+			chip8.unsetKey(15);
+            break;
         }
         break;
+    }
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
@@ -174,22 +383,3 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
-}

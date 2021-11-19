@@ -324,6 +324,10 @@ void Chip8::clearDisplay() {
     }
 }
 
+bool Chip8::shouldDraw() {
+    return _draw;
+}
+
 void Chip8::updateTimers() {
     if (delay_timer > 0) {
         --delay_timer;
@@ -335,4 +339,16 @@ void Chip8::updateTimers() {
         }
         --sound_timer;
     }
+}
+
+void Chip8::setKey(unsigned int key_index) {
+    key[key_index] = 1;
+}
+
+void Chip8::unsetKey(unsigned int key_index) {
+    key[key_index] = 0;
+}
+
+unsigned char* Chip8::getGraphics() {
+    return gfx;
 }

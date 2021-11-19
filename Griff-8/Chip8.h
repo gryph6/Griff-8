@@ -5,7 +5,11 @@ public:
 	void initialize();
 	bool loadProgram(std::string path);
 	void emulateCycle();
+	bool shouldDraw();
 	void updateTimers();
+	void setKey(unsigned int key_index);
+	void unsetKey(unsigned int key_index);
+	unsigned char* getGraphics();
 
 private:
 	void handleUnknownCode();
