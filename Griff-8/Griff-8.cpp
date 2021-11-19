@@ -67,25 +67,25 @@ Chip8 chip8;
 HWND m_hwnd;
 ID2D1Factory* m_pDirect2dFactory;
 ID2D1HwndRenderTarget* m_pRenderTarget;
-ID2D1SolidColorBrush* m_pBlackBrush;
-ID2D1SolidColorBrush* m_pWhiteBrush;
+ID2D1SolidColorBrush* m_pForegroundBrush;
+ID2D1SolidColorBrush* m_pBackgroundBrush;
 
 void CheckerboardDemo(D2D1_RECT_F rect, int row, int col) {
 	// Draw checkerboard
 	if (row % 2 == 0) {
 		if (col % 2 == 0) {
-			m_pRenderTarget->FillRectangle(&rect, m_pBlackBrush);
+			m_pRenderTarget->FillRectangle(&rect, m_pForegroundBrush);
 		}
 		else {
-			m_pRenderTarget->FillRectangle(&rect, m_pWhiteBrush);
+			m_pRenderTarget->FillRectangle(&rect, m_pBackgroundBrush);
 		}
 	}
 	else {
 		if (col % 2 == 0) {
-			m_pRenderTarget->FillRectangle(&rect, m_pWhiteBrush);
+			m_pRenderTarget->FillRectangle(&rect, m_pBackgroundBrush);
 		}
 		else {
-			m_pRenderTarget->FillRectangle(&rect, m_pBlackBrush);
+			m_pRenderTarget->FillRectangle(&rect, m_pForegroundBrush);
 		}
 	}
 }
@@ -94,7 +94,7 @@ void Draw(unsigned char* graphics) {
     m_pRenderTarget->BeginDraw();
 
     m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-    m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+    m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
 
     D2D1_SIZE_F rtSize = m_pRenderTarget->GetSize();
 
@@ -113,9 +113,9 @@ void Draw(unsigned char* graphics) {
 		);
 
         if (graphics[i]) {
-            m_pRenderTarget->FillRectangle(&pixel, m_pWhiteBrush);
+            m_pRenderTarget->FillRectangle(&pixel, m_pForegroundBrush);
         } else {
-            m_pRenderTarget->FillRectangle(&pixel, m_pBlackBrush);
+            m_pRenderTarget->FillRectangle(&pixel, m_pBackgroundBrush);
         }
     }
 
@@ -166,13 +166,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     );
 
     hr = m_pRenderTarget->CreateSolidColorBrush(
-        D2D1::ColorF(D2D1::ColorF::Black),
-        &m_pBlackBrush
+        D2D1::ColorF(D2D1::ColorF::LightPink),
+        &m_pForegroundBrush
     );
 
     hr = m_pRenderTarget->CreateSolidColorBrush(
-        D2D1::ColorF(D2D1::ColorF::White),
-        &m_pWhiteBrush
+        D2D1::ColorF(D2D1::ColorF::DarkRed),
+        &m_pBackgroundBrush
     );
 
     chip8.initialize();
@@ -180,20 +180,41 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     
 	MSG msg;
     bool running = true;
+
+    LARGE_INTEGER frequency;
+    LARGE_INTEGER start;
+    LARGE_INTEGER end;
+
+    double chip8_freq = 1 / 60.0;
+    double cumulative_time = 0.0;
+
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&start);
+
     while (running) {
-		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-        
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
 
-			chip8.emulateCycle();
+		chip8.emulateCycle();
 
-            if (chip8.shouldDraw()) {
-                Draw(chip8.getGraphics());
-            }
-
-			chip8.updateTimers();
+		if (chip8.shouldDraw()) {
+			Draw(chip8.getGraphics());
 		}
+
+        QueryPerformanceCounter(&end);
+
+        long long frame_ticks = end.QuadPart - start.QuadPart;
+        start = end;
+
+        double frame_time = 1.0 / frequency.QuadPart * frame_ticks;
+
+        cumulative_time += frame_time;
+        if (cumulative_time >= chip8_freq) {
+			chip8.updateTimers();
+            cumulative_time = cumulative_time - chip8_freq;
+        }
     }
 
     CoUninitialize();
