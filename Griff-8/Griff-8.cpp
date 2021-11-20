@@ -113,6 +113,7 @@ void Draw(unsigned char* graphics) {
 				col * pixel_height + pixel_height 
 			);
 
+            m_pRenderTarget->DrawRectangle(&pixel, m_pForegroundBrush);
             m_pRenderTarget->FillRectangle(&pixel, m_pForegroundBrush);
         } 
     }
