@@ -75,6 +75,7 @@ void Chip8::emulateCycle() {
 				break;
 			case 0x000E: // 0x00EE: Return from subroutine
 				pc = stack[--sp];
+                pc += 2;
 				break;
 			default:
 				handleUnknownCode();

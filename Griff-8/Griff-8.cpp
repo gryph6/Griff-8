@@ -175,7 +175,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     );
 
     chip8.initialize();
-    chip8.loadProgram("C:\\Users\\griff\\Downloads\\15 Puzzle [Roger Ivie].ch8");
+    chip8.loadProgram("C:\\Users\\griff\\Downloads\\test_opcode.ch8");
     
 	MSG msg;
     bool running = true;
