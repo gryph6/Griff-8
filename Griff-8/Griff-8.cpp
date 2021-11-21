@@ -67,34 +67,15 @@ Chip8 chip8;
 HWND m_hwnd;
 ID2D1Factory* m_pDirect2dFactory;
 ID2D1HwndRenderTarget* m_pRenderTarget;
-ID2D1SolidColorBrush* m_pForegroundBrush;
-ID2D1SolidColorBrush* m_pBackgroundBrush;
-
-void CheckerboardDemo(D2D1_RECT_F rect, int row, int col) {
-	// Draw checkerboard
-	if (row % 2 == 0) {
-		if (col % 2 == 0) {
-			m_pRenderTarget->FillRectangle(&rect, m_pForegroundBrush);
-		}
-		else {
-			m_pRenderTarget->FillRectangle(&rect, m_pBackgroundBrush);
-		}
-	}
-	else {
-		if (col % 2 == 0) {
-			m_pRenderTarget->FillRectangle(&rect, m_pBackgroundBrush);
-		}
-		else {
-			m_pRenderTarget->FillRectangle(&rect, m_pForegroundBrush);
-		}
-	}
-}
+ID2D1SolidColorBrush* m_pPixelBrush;
+D2D1_COLOR_F m_foregroundColor = D2D1::ColorF(D2D1::ColorF::DarkBlue);
+D2D1_COLOR_F m_backGroundColor = D2D1::ColorF(D2D1::ColorF::LightBlue);
 
 void Draw(unsigned char* graphics) {
     m_pRenderTarget->BeginDraw();
 
     m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-    m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::DarkRed));
+    m_pRenderTarget->Clear(m_backGroundColor);
 
     D2D1_SIZE_F rtSize = m_pRenderTarget->GetSize();
 
@@ -113,8 +94,9 @@ void Draw(unsigned char* graphics) {
 				col * pixel_height + pixel_height 
 			);
 
-            m_pRenderTarget->DrawRectangle(&pixel, m_pForegroundBrush);
-            m_pRenderTarget->FillRectangle(&pixel, m_pForegroundBrush);
+            m_pPixelBrush->SetColor(m_foregroundColor);
+            m_pRenderTarget->DrawRectangle(&pixel, m_pPixelBrush);
+            m_pRenderTarget->FillRectangle(&pixel, m_pPixelBrush);
         } 
     }
 
@@ -165,13 +147,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     );
 
     hr = m_pRenderTarget->CreateSolidColorBrush(
-        D2D1::ColorF(D2D1::ColorF::LightPink),
-        &m_pForegroundBrush
-    );
-
-    hr = m_pRenderTarget->CreateSolidColorBrush(
-        D2D1::ColorF(D2D1::ColorF::DarkRed),
-        &m_pBackgroundBrush
+        m_foregroundColor,
+        &m_pPixelBrush
     );
 
     chip8.initialize();
@@ -317,28 +294,40 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         switch (wParam) {
         case 0x5A:
             chip8.setKey(0);
+            break;
         case 0x58:
             chip8.setKey(1);
+            break;
         case 0x43:
             chip8.setKey(2);
+            break;
         case 0x56:
             chip8.setKey(3);
+            break;
         case 0x41:
             chip8.setKey(4);
+            break;
         case 0x53:
             chip8.setKey(5);
+            break;
         case 0x44:
             chip8.setKey(6);
+            break;
         case 0x46:
             chip8.setKey(7);
+            break;
         case 0x51:
             chip8.setKey(8);
+            break;
         case 0x57:
             chip8.setKey(9);
+            break;
         case 0x45:
             chip8.setKey(10);
+            break;
         case 0x52:
             chip8.setKey(11);
+            break;
         case 0x31:
 			chip8.setKey(12);
             break;
@@ -352,33 +341,46 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			chip8.setKey(15);
             break;
         }
+        break;
     }
     case WM_KEYUP: {
         switch (wParam) {
         case 0x5A:
             chip8.unsetKey(0);
+            break;
         case 0x58:
             chip8.unsetKey(1);
+            break;
         case 0x43:
             chip8.unsetKey(2);
+            break;
         case 0x56:
             chip8.unsetKey(3);
+            break;
         case 0x41:
             chip8.unsetKey(4);
+            break;
         case 0x53:
             chip8.unsetKey(5);
+            break;
         case 0x44:
             chip8.unsetKey(6);
+            break;
         case 0x46:
             chip8.unsetKey(7);
+            break;
         case 0x51:
             chip8.unsetKey(8);
+            break;
         case 0x57:
             chip8.unsetKey(9);
+            break;
         case 0x45:
             chip8.unsetKey(10);
+            break;
         case 0x52:
             chip8.unsetKey(11);
+            break;
         case 0x31:
 			chip8.unsetKey(12);
             break;

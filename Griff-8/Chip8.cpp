@@ -75,7 +75,6 @@ void Chip8::emulateCycle() {
 				break;
 			case 0x000E: // 0x00EE: Return from subroutine
 				pc = stack[--sp];
-                pc += 2;
 				break;
 			default:
 				handleUnknownCode();
@@ -86,7 +85,7 @@ void Chip8::emulateCycle() {
             pc = opcode & 0x0FFF;
             break;
         case 0x2000: // 0x2NNN: Call subroutine at address NNN. Store current stack pointer in stack, move stack pointer to address NNN.
-            stack[sp++] = pc;
+            stack[sp++] = pc + 2;
             pc = opcode & 0x0FFF;
             break;
         case 0x3000: // 0x3XNN: Skip next instruction if VX == NN
@@ -214,10 +213,10 @@ void Chip8::emulateCycle() {
                     unsigned char* screenPixel = &gfx[(y + row) * 64 + x + col];
                     
                     if (spritePixel) {
-                        if (*screenPixel == 0xFFFFFFFF) {
+                        if (*screenPixel) {
                             V[0xF] = 1;
                         }
-                        *screenPixel ^= 0xFFFFFFFF;
+                        *screenPixel ^= 1;
                     }
                 }
             }
@@ -347,11 +346,15 @@ void Chip8::updateTimers() {
 }
 
 void Chip8::setKey(unsigned int key_index) {
-    key[key_index] = 1;
+    if (!key[key_index]) {
+		key[key_index] = 1;
+    }
 }
 
 void Chip8::unsetKey(unsigned int key_index) {
-    key[key_index] = 0;
+    if (key[key_index]) {
+		key[key_index] = 0;
+    }
 }
 
 unsigned char* Chip8::getGraphics() {
