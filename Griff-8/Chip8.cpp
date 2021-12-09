@@ -288,16 +288,16 @@ void Chip8::emulateCycle() {
                     break;
                 case 0x0055: { // 0xFX55: Dump register V0 to VX (inclusive) in memory starting at address I
                     unsigned char X = (opcode & 0x0F00) >> 8;
-                    for (int i = 0; i < X; ++i) {
-                        memory[I + i * sizeof(char)] = V[i];
+                    for (int i = 0; i <= X; ++i) {
+                        memory[I + i] = V[i];
                     }
                     pc += 2;
                     break;
                 }
                 case 0x0065: { // 0xFX65: Fill register V0 to VX (inclusive) from memory starting at address I
                     unsigned char X = (opcode & 0x0F00) >> 8;
-                    for (int i = 0; i < X; ++i) {
-                        V[i] = memory[I + i * sizeof(unsigned char)];
+                    for (int i = 0; i <= X; ++i) {
+                        V[i] = memory[I + i];
                     }
                     pc += 2;
                     break;

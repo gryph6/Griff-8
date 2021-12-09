@@ -152,7 +152,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     );
 
     chip8.initialize();
-    chip8.loadProgram("C:\\Users\\griff\\Downloads\\test_opcode.ch8");
+    // chip8.loadProgram("C:\\Users\\griff\\Downloads\\br8kout.ch8");
+    chip8.loadProgram("C:\\Users\\griff\\Downloads\\chip8-test-rom-master\\chip8-test-rom-master\\chip8-test-rom.ch8");
     
 	MSG msg;
     bool running = true;
